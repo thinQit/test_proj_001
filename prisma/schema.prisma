@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductCategory {
+  OUTERWEAR
+  TOPS
+  BOTTOMS
+  ACCESSORIES
+}
+
+enum CartAction {
+  ADD
+  UPDATE
+  REMOVE
+}
+
+enum ContactTopic {
+  ORDER_STATUS
+  RETURNS_EXCHANGES
+  SIZING_HELP
+  PRODUCT_QUESTION
+  BULK_GIFTING
+  PRESS
+  OTHER
+}
+
+model Product {
+  id            String          @id @default(cuid())
+  slug          String          @unique
+  name          String
+  description   String?
+  priceCents    Int
+  compareAtCents Int?
+  currency      String          @default("USD")
+  category      ProductCategory
+  rating        Float           @default(0)
+  reviewCount   Int             @default(0)
+  inStock       Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  images        ProductImage[]
+  variants      ProductVariant[]
+  reviews       ProductReview[]
+  cartItems     CartItem[]
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  url       String
+  alt       String?
+  position  Int      @default(0)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id         String  @id @default(cuid())
+  color      String
+  size       String
+  sku        String  @unique
+  stock      Int     @default(0)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  cartItems  CartItem[]
+
+  @@unique([productId, color, size])
+  @@index([productId])
+}
+
+model ProductReview {
+  id         String   @id @default(cuid())
+  name       String
+  rating     Int
+  title      String?
+  body       String
+  createdAt  DateTime @default(now())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  sessionId  String     @unique
+  currency   String     @default("USD")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  items      CartItem[]
+}
+
+model CartItem {
+  id               String         @id @default(cuid())
+  quantity         Int
+  unitPriceCents   Int
+  cartId           String
+  cart             Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productVariantId String
+  productVariant   ProductVariant @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productVariantId])
+  @@index([cartId])
+}
+
+model ContactMessage {
+  id          String       @id @default(cuid())
+  name        String
+  email       String
+  topic       ContactTopic
+  orderNumber String?
+  message     String
+  createdAt   DateTime     @default(now())
+}
+
+model NewsletterSignup {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  consentAcceptedAt DateTime
+  createdAt         DateTime @default(now())
+}
